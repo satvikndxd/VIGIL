@@ -1,0 +1,20 @@
+{
+  "seed": 42,
+  "kaggle_dataset": "abdallahwagih/mit-bih-arrhythmia-database",
+  "data_dir": "",
+  "output_dir": "./artifacts_arrhythmia",
+  "mode": "DEBUG",
+  "beat_pre_samples": 90,
+  "beat_post_samples": 90,
+  "sequence_length": 8,
+  "max_beats_per_class": 1200,
+  "batch_size": 128,
+  "learning_rate": 0.001,
+  "hidden_size": 48,
+  "num_layers": 1,
+  "dropout": 0.25,
+  "epochs": 3,
+  "patience": 2,
+  "threshold": 0.5,
+  "device": "cpu"
+}

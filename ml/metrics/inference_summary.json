@@ -1,0 +1,5 @@
+{
+  "best_model": "RNN",
+  "inference_latency_ms_per_example": 0.021114683911593546,
+  "test_examples": 4154
+}

@@ -1,0 +1,46 @@
+{
+  "model_type": "RNN",
+  "weights_path": "models/best_model.pt",
+  "class_names": [
+    "N",
+    "S",
+    "V",
+    "F",
+    "Q"
+  ],
+  "symbol_groups": {
+    "N": [
+      "N",
+      "L",
+      "R",
+      "e",
+      "j"
+    ],
+    "S": [
+      "A",
+      "a",
+      "J",
+      "S"
+    ],
+    "V": [
+      "V",
+      "E"
+    ],
+    "F": [
+      "F"
+    ],
+    "Q": [
+      "Q",
+      "/",
+      "f"
+    ]
+  },
+  "sample_rate_hz": 360,
+  "beat_pre_samples": 90,
+  "beat_post_samples": 90,
+  "sequence_length": 8,
+  "normalization": "per-beat robust median/MAD, clipped to +/-8",
+  "model_version": "vigil-arrhythmia-0.1",
+  "threshold": 0.5,
+  "inference_latency_ms_per_example": 0.021114683911593546
+}

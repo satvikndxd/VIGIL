@@ -1,0 +1,8 @@
+{
+  "requests": 30,
+  "cold_start_ms": null,
+  "p50_ms": 12.857013440225273,
+  "p95_ms": 16.77216924726963,
+  "throughput_requests_per_second": 76.82050071781524,
+  "mean_ms": 13.017358526121825
+}

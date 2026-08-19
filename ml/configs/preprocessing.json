@@ -1,0 +1,7 @@
+{
+  "beat_pre_samples": 90,
+  "beat_post_samples": 90,
+  "sequence_length": 8,
+  "normalization": "per-beat robust median/MAD with clipping at +/-8",
+  "sample_rate_hz": 360
+}

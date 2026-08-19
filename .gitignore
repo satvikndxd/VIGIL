@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.*
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.cache/
+*.log
+# Keep the trained VIGIL artifacts and notebook outputs tracked.
