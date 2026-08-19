@@ -3,8 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f6f7f9" />
-    <title>VIGIL — ECG Arrhythmia Analytics</title>
+    <meta name="theme-color" content="#f9f9f7" />
+    <title>VIGIL — ECG Arrhythmia Workbench</title>
+    <script>
+      // Pre-paint theme to avoid a flash of the wrong mode.
+      try {
+        var t = localStorage.getItem('vigil-theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
