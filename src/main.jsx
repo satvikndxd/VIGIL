@@ -3,92 +3,90 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 
 const API = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
-const colors = { N: '#315a91', S: '#e28b42', V: '#c85c43', F: '#806b9b', Q: '#7e8791' };
+const classes = ['N', 'S', 'V', 'F', 'Q'];
 const labels = { N: 'Normal', S: 'Supraventricular', V: 'Ventricular', F: 'Fusion', Q: 'Unknown' };
+const colors = { N: '#315a91', S: '#e28b42', V: '#c85c43', F: '#806b9b', Q: '#7e8791' };
+const fmt = (n, d = 3) => n === null || n === undefined || Number.isNaN(Number(n)) ? '—' : Number(n).toFixed(d);
+const pct = n => n === null || n === undefined ? '—' : `${(Number(n) * 100).toFixed(1)}%`;
 
-function fmt(n, digits = 3) { return n === null || n === undefined || Number.isNaN(Number(n)) ? '—' : Number(n).toFixed(digits); }
-function pct(n) { return n === null || n === undefined ? '—' : `${(Number(n) * 100).toFixed(1)}%`; }
-
-async function getJson(path, options) {
-  const res = await fetch(`${API}${path}`, options);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json();
+async function api(path, options) {
+  const r = await fetch(`${API}${path}`, options);
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
 }
 
-function Card({ title, kicker, children, className = '' }) {
-  return <section className={`card ${className}`}><div className="card-head"><span className="card-title">{title}</span>{kicker && <span className="card-kicker">{kicker}</span>}</div>{children}</section>;
+function Panel({ title, tabs, activeTab, onTab, children, className = '' }) {
+  return <section className={`panel ${className}`}><div className="panel-bar"><div className="panel-title"><span className="panel-icon">▦</span>{title}</div>{tabs && <div className="panel-tabs">{tabs.map(tab => <button key={tab} className={activeTab === tab ? 'tab-active' : ''} onClick={() => onTab?.(tab)}>{tab}</button>)}</div>}<div className="panel-actions">⋮</div></div>{children}</section>;
 }
 
-function Kpi({ label, value, note, accent = 'blue' }) {
-  return <div className="kpi" style={{ '--accent': accent }}><div className="kpi-label">{label}</div><div className="kpi-value">{value}</div><div className="kpi-note">{note}</div></div>;
+function SqlEditor({ model, record, prediction }) {
+  const p = prediction?.probabilities || {};
+  const sql = [
+    '-- VIGIL / LIVE ECG ANALYSIS',
+    'SELECT',
+    `  record_id AS RECORD,`,
+    `  '${prediction?.class_name || '—'}' AS PREDICTED_CLASS,`,
+    `  ROUND(${Number(p[prediction?.class_name] || 0).toFixed(4)}, 4) AS CONFIDENCE,`,
+    `  '${model || 'RNN'}' AS MODEL,`,
+    `  '${record || '100'}' AS ECG_RECORD`,
+    'FROM mitbih_inference',
+    'WHERE sequence_length = 8',
+    'ORDER BY confidence DESC;'
+  ];
+  return <div className="sql-editor"><div className="editor-gutter">{sql.map((_, i) => <span key={i}>{i + 1}</span>)}</div><pre>{sql.map((line, i) => <code key={i} className={i === 0 ? 'comment' : i === 1 || i === 7 || i === 8 || i === 9 ? 'keyword' : ''}>{line}{'\n'}</code>)}</pre><div className="editor-status"><span>● Analysis ready</span><span>Ln 10, Col 31</span></div></div>;
 }
 
-function Waveform({ signal = [], probability = {}, predicted = 'N' }) {
-  const width = 920, height = 230, pad = 18;
+function ResultTable({ rows = [], compact = false }) {
+  return <div className={`result-scroll ${compact ? 'compact' : ''}`}><table className="result-table"><thead><tr><th>#</th><th>RECORD</th><th>TRUE_CLASS</th><th>PREDICTED_CLASS</th><th>CONFIDENCE</th><th>STATUS</th></tr></thead><tbody>{rows.slice(0, compact ? 8 : 14).map((row, i) => <tr key={`${row.record}-${i}`}><td>{i + 1}</td><td>{row.record}</td><td><b style={{ color: colors[row.true_class] }}>{row.true_class}</b></td><td><b style={{ color: colors[row.pred_class] }}>{row.pred_class}</b></td><td>{pct(row.confidence)}</td><td><span className={row.correct ? 'status-good' : 'status-review'}>{row.correct ? 'CORRECT' : 'REVIEW'}</span></td></tr>)}</tbody></table></div>;
+}
+
+function Connections({ model, metrics }) {
+  return <aside className="connections"><div className="side-heading">Connections <span>×</span></div><div className="connection-root"><span className="db-dot" /> VIGIL</div><div className="tree"><div>⌄ <b>MIT-BIH ARRHYTHMIA</b></div><div>▦ Records <em>48</em></div><div>◈ Models <em>{model?.available_models?.length || 5}</em></div><div>▤ Metrics <em>{metrics?.models?.length || 7}</em></div><div>◌ Explanations <em>2</em></div><div>▾ API endpoints</div><div className="tree-child">GET /health</div><div className="tree-child">POST /predict</div><div className="tree-child">GET /metrics</div></div><div className="side-footer">Repository: main<br />Model: {model?.model_version || '—'}</div></aside>;
+}
+
+function ProbabilityTable({ probabilities = {} }) {
+  return <div className="prob-table">{classes.map(key => <div className="prob-line" key={key}><span><i style={{ background: colors[key] }} />{key} · {labels[key]}</span><div className="tiny-track"><div style={{ width: `${Math.max(1, Number(probabilities[key] || 0) * 100)}%`, background: colors[key] }} /></div><b>{pct(probabilities[key] || 0)}</b></div>)}</div>;
+}
+
+function AttentionStrip({ attention = [] }) {
+  const weights = attention.length ? attention : classes.map((_, i) => ({ beat_position: i, weight: 0 }));
+  const max = Math.max(...weights.map(x => x.weight), 0.001);
+  return <div className="attention-strip">{weights.map(item => <div className="attention-cell" key={item.beat_position}><span style={{ height: `${8 + (item.weight / max) * 35}px`, opacity: .25 + (item.weight / max) * .75 }} /><small>B{item.beat_position + 1}</small></div>)}</div>;
+}
+
+function Waveform({ signal = [], predicted = 'N' }) {
   const points = useMemo(() => {
     if (!signal.length) return '';
-    const slice = signal.length > 720 ? signal.filter((_, i) => i % Math.ceil(signal.length / 720) === 0) : signal;
-    const min = Math.min(...slice), max = Math.max(...slice), range = max - min || 1;
-    return slice.map((v, i) => `${pad + (i / Math.max(slice.length - 1, 1)) * (width - 2 * pad)},${height - pad - ((v - min) / range) * (height - 2 * pad)}`).join(' ');
+    const step = Math.max(1, Math.ceil(signal.length / 600)); const values = signal.filter((_, i) => i % step === 0); const min = Math.min(...values); const max = Math.max(...values); const range = max - min || 1;
+    return values.map((v, i) => `${(i / Math.max(1, values.length - 1)) * 100},${96 - ((v - min) / range) * 84}`).join(' ');
   }, [signal]);
-  return <div className="wave-wrap">
-    <div className="wave-meta"><div><span className="micro-label">PREDICTED RHYTHM</span><strong className="prediction" style={{ color: colors[predicted] }}>{labels[predicted] || predicted} ({predicted})</strong></div><div className="wave-confidence"><span className="micro-label">CONFIDENCE</span><strong>{pct(Math.max(...Object.values(probability || { N: 0 })))}</strong></div></div>
-    <svg className="waveform" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="ECG waveform">
-      {[40, 85, 130, 175, 220].map(y => <line key={y} x1="0" x2={width} y1={y} y2={y} className="grid-line" />)}
-      {[80, 240, 400, 560, 720, 880].map(x => <line key={x} x1={x} x2={x} y1="0" y2={height} className="grid-line" />)}
-      <polyline points={points} fill="none" stroke={colors[predicted] || colors.N} strokeWidth="1.7" vectorEffect="non-scaling-stroke" />
-    </svg>
-    <div className="axis"><span>0 ms</span><span>500 ms</span><span>1000 ms</span><span>1500 ms</span><span>2000 ms</span></div>
-  </div>;
-}
-
-function ProbabilityBars({ probabilities = {} }) {
-  return <div className="prob-list">{Object.entries(probabilities).map(([key, value]) => <div className="prob-row" key={key}><div className="prob-label"><span className="dot" style={{ background: colors[key] }} />{key}<span className="prob-name">{labels[key]}</span></div><div className="prob-track"><div className="prob-fill" style={{ width: `${Math.max(1, value * 100)}%`, background: colors[key] }} /></div><strong>{pct(value)}</strong></div>)}</div>;
-}
-
-function Attention({ attention = [] }) {
-  const items = attention.length ? attention : Array.from({ length: 8 }, (_, i) => ({ beat_position: i, weight: 0 }));
-  const max = Math.max(...items.map(x => x.weight), 0.001);
-  return <div className="attention"><div className="attention-bars">{items.map(item => <div className="att-cell" key={item.beat_position}><div className="att-bar" style={{ height: `${12 + (item.weight / max) * 54}px`, opacity: 0.28 + (item.weight / max) * 0.72 }} /><span>Beat {item.beat_position + 1}</span><small>{fmt(item.weight, 3)}</small></div>)}</div><div className="attention-note">Temporal attention is descriptive and is not a causal explanation.</div></div>;
-}
-
-function ConfusionMatrix({ matrix = [] }) {
-  const values = matrix.length ? matrix : Array.from({ length: 5 }, () => Array(5).fill(0));
-  return <div className="matrix-wrap"><div className="matrix-label top">PREDICTED</div><div className="matrix-grid"><div className="matrix-y">TRUE</div><div className="matrix-table"><div className="matrix-row header"><span />{Object.keys(labels).map(k => <span key={k}>{k}</span>)}</div>{values.map((row, i) => <div className="matrix-row" key={i}><b>{Object.keys(labels)[i]}</b>{row.map((value, j) => <span key={j} style={{ background: `rgba(49,90,145,${Math.min(0.76, 0.08 + value / Math.max(1, Math.max(...values.flat())) * .68)})` }}>{value}</span>)}</div>)}</div></div></div>;
+  return <div className="ecg-mini"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0 18 H100 M0 50 H100 M0 82 H100" className="ecg-grid" /><polyline points={points} style={{ stroke: colors[predicted] || colors.N }} /></svg><div className="wave-axis"><span>0 ms</span><span>500</span><span>1000</span><span>1500</span><span>2000 ms</span></div></div>;
 }
 
 function Dashboard() {
-  const [health, setHealth] = useState(null); const [model, setModel] = useState(null); const [metrics, setMetrics] = useState(null); const [sample, setSample] = useState(null); const [prediction, setPrediction] = useState(null); const [records, setRecords] = useState([]); const [explanations, setExplanations] = useState(null); const [selectedModel, setSelectedModel] = useState('RNN'); const [classFilter, setClassFilter] = useState('All'); const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [view, setView] = useState('Dashboard');
+  const [health, setHealth] = useState(null); const [model, setModel] = useState(null); const [metrics, setMetrics] = useState(null); const [sample, setSample] = useState(null); const [prediction, setPrediction] = useState(null); const [records, setRecords] = useState([]); const [explanations, setExplanations] = useState(null); const [selectedModel, setSelectedModel] = useState('RNN'); const [view, setView] = useState('Dashboard'); const [tab, setTab] = useState('Query Result'); const [error, setError] = useState(''); const [loading, setLoading] = useState(true);
 
+  async function analyze(signal, modelName = selectedModel) {
+    if (!signal) return;
+    try { const result = await api('/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signal, model: modelName, record_id: sample?.record_id }) }); setPrediction(result); } catch (e) { setError(e.message); }
+  }
   async function load() {
-    try { setLoading(true); setError(''); const [h, m, r, s, e] = await Promise.all([getJson('/health'), getJson('/model'), getJson('/metrics'), getJson('/records?limit=25'), getJson('/explanations')]); setHealth(h); setModel(m); setMetrics(r); setRecords(s.records || []); setSample(await getJson('/sample-signal')); setExplanations(e); } catch (err) { setError(err.message); } finally { setLoading(false); }
+    try { setLoading(true); const [h, m, mt, r, s, e] = await Promise.all([api('/health'), api('/model'), api('/metrics'), api('/records?limit=50'), api('/sample-signal'), api('/explanations')]); setHealth(h); setModel(m); setMetrics(mt); setRecords(r.records || []); setSample(s); setExplanations(e); await analyze(s.signal, m.default_model); } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
-  useEffect(() => { if (sample?.signal?.length) analyze(sample.signal); }, [sample, selectedModel]);
-  async function analyze(signal = sample?.signal) { if (!signal) return; try { const p = await getJson('/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signal, model: selectedModel, record_id: sample?.record_id }) }); setPrediction(p); } catch (err) { setError(err.message); } }
+  useEffect(() => { if (sample?.signal && model?.default_model) analyze(sample.signal, selectedModel); }, [selectedModel]);
 
-  const modelRows = metrics?.models || [];
-  const rowFor = (name) => modelRows.find(row => String(row.Model || row.model || '').toLowerCase().includes(name.toLowerCase())) || {};
-  const activeRow = rowFor(selectedModel === 'BiLSTM_Attention' ? 'BiLSTM_Attention' : selectedModel);
-  const best = metrics?.best_neural_model || model?.default_model || 'RNN';
-  const classCounts = Object.keys(labels).map(k => ({ key: k, value: Number(metrics?.class_distribution?.[k] || 0) }));
-  const matrix = metrics?.confusion_matrix || Object.keys(labels).map(a => Object.keys(labels).map(b => records.filter(r => r.true_class === a && r.pred_class === b).length));
-  const shownRecords = classFilter === 'All' ? records : records.filter(r => r.true_class === classFilter || r.pred_class === classFilter);
+  const rows = metrics?.models || []; const active = rows.find(r => String(r.Model).toLowerCase() === selectedModel.toLowerCase()) || rows.find(r => String(r.Model).toLowerCase() === 'rnn') || {};
+  const bestMacro = rows.reduce((a, b) => Number(a.MacroF1 || 0) > Number(b.MacroF1 || 0) ? a : b, {}); const bestAuroc = rows.reduce((a, b) => Number(a.AUROC_OVR || 0) > Number(b.AUROC_OVR || 0) ? a : b, {});
+  const displayRows = records.slice(0, 10); const predictionClass = prediction?.class_name || 'N';
+  const sqlText = `SELECT record_id, predicted_class, confidence\nFROM mitbih_inference\nWHERE model = '${selectedModel}'\nORDER BY confidence DESC;`;
 
-  return <div className="shell">
-    <header className="topbar"><div className="brand"><div className="brand-mark">V</div><div><div className="brand-name">VIGIL</div><div className="brand-sub">Interpretable Temporal Deep Learning for ECG Arrhythmia Classification</div></div></div><nav>{['Dashboard', 'Experiments', 'Records', 'About'].map(item => <button className={view === item ? 'nav-active' : ''} onClick={() => setView(item)} key={item}>{item}</button>)}</nav><div className="status"><span className={`status-dot ${health?.status === 'ok' ? 'online' : ''}`} /> <span>{health?.status === 'ok' ? 'MODEL ONLINE' : 'API OFFLINE'}</span><b>{model?.model_version || '—'}</b></div></header>
-    <main>
-      <div className="controlbar"><div className="control"><label>RECORD / PATIENT</label><select value={sample?.record_id || ''} onChange={() => {}}><option>{sample?.record_id || 'Loading'}</option></select></div><div className="control"><label>MODEL</label><select value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>{(model?.available_models || ['RNN']).map(name => <option key={name}>{name}</option>)}</select></div><div className="control"><label>SEQUENCE</label><select><option>{model?.sequence_length || 8} beats</option></select></div><div className="control"><label>CLASS FILTER</label><select value={classFilter} onChange={e => setClassFilter(e.target.value)}><option>All</option>{Object.keys(labels).map(k => <option key={k}>{k}</option>)}</select></div><button className="analyze" onClick={() => analyze()}>ANALYZE ECG</button><span className="control-note">LIVE API OUTPUTS</span></div>
-      {error && <div className="notice error">API unavailable: {error}. Start the FastAPI service to load measured outputs.</div>}
-      {loading ? <div className="loading">Loading VIGIL analytics workspace…</div> : view === 'Experiments' ? <div className="page-view"><div className="section-line"><div><span className="eyebrow">RESEARCH BENCHMARK</span><h1>Experiments</h1></div><div className="section-meta">Actual held-out metrics from repository artifacts</div></div><Card title="EXPERIMENTS" kicker="Grouped record-level split"><div className="mini-table experiment-table"><div className="mini-row header"><span>MODEL</span><span>MACRO F1</span><span>AUROC</span><span>AUPRC</span></div>{modelRows.map((r, i) => <div className={`mini-row ${String(r.Model || r.model) === best ? 'highlight' : ''}`} key={i}><span>{r.Model || r.model}</span><span>{fmt(r.MacroF1)}</span><span>{fmt(r.AUROC_OVR)}</span><span>{fmt(r.AUPRC_macro)}</span></div>)}</div></Card><div className="lower-grid"><Card title="EXPERIMENT NOTES" kicker="No fabricated benchmark claims"><p className="body-copy">The benchmark preserves the measured result: the RNN is the best neural model by Macro-F1 in the current run, while Logistic Regression and Random Forest remain important comparison baselines. The dashboard does not visually imply that Bi-LSTM + Attention wins.</p></Card><Card title="MODEL INFORMATION" kicker="Current artifact contract"><dl className="info-grid"><dt>Best neural model</dt><dd>{best}</dd><dt>Framework</dt><dd>{model?.framework || 'PyTorch'}</dd><dt>Sequence</dt><dd>{model?.sequence_length || 8} beats</dd><dt>Input</dt><dd>{model?.samples_per_beat || 180} samples / beat</dd><dt>Parameters</dt><dd>{activeRow.Params ? Number(activeRow.Params).toLocaleString() : '—'}</dd><dt>Seed</dt><dd>42</dd></dl></Card></div></div> : view === 'Records' ? <div className="page-view"><div className="section-line"><div><span className="eyebrow">HELD-OUT PREDICTIONS</span><h1>Records</h1></div><div className="section-meta">{shownRecords.length} rows loaded from the actual test prediction artifact</div></div><Card title="PREDICTION HISTORY" kicker="Use the class filter above"><div className="table-scroll tall"><table><thead><tr><th>RECORD</th><th>TRUE CLASS</th><th>PREDICTED</th><th>CONFIDENCE</th><th>STATUS</th></tr></thead><tbody>{shownRecords.map((r, i) => <tr key={i}><td>{r.record}</td><td><span className="class-tag" style={{ color: colors[r.true_class] }}>{r.true_class}</span></td><td><span className="class-tag" style={{ color: colors[r.pred_class] }}>{r.pred_class}</span></td><td>{pct(r.confidence)}</td><td><span className={r.correct ? 'ok-tag' : 'bad-tag'}>{r.correct ? 'CORRECT' : 'REVIEW'}</span></td></tr>)}</tbody></table></div></Card></div> : view === 'About' ? <div className="page-view"><div className="section-line"><div><span className="eyebrow">PROJECT INFORMATION</span><h1>About VIGIL</h1></div><div className="section-meta">Research engineering system</div></div><div className="lower-grid"><Card title="VIGIL" kicker="Interpretable temporal deep learning"><p className="body-copy">VIGIL is an enterprise-style ECG analytics workstation for five-class MIT-BIH arrhythmia research. It combines the existing PyTorch checkpoints, grouped record-level evaluation, FastAPI inference, and a compact BI dashboard.</p><p className="body-copy">This is a retrospective research prototype and is not a medical diagnostic device. Temporal attention is descriptive, not causal, and the measured minority-class limitations remain visible in the experiment artifacts.</p></Card><Card title="DATA CONTRACT" kicker="Real outputs only"><dl className="info-grid"><dt>Dataset</dt><dd>MIT-BIH mirror</dd><dt>Classes</dt><dd>N · S · V · F · Q</dd><dt>Sample rate</dt><dd>{model?.sample_rate_hz || 360} Hz</dd><dt>Model version</dt><dd>{model?.model_version || '—'}</dd><dt>API</dt><dd>FastAPI</dd><dt>Frontend</dt><dd>React + Vite</dd></dl></Card></div></div> : <>
-        <div className="section-line"><div><span className="eyebrow">ECG ANALYTICS WORKSPACE</span><h1>{view === 'Dashboard' ? 'Performance overview' : view}</h1></div><div className="section-meta">Dataset: MIT-BIH · 5 classes · Grouped record split · Seed 42</div></div>
-        <div className="kpi-grid"><Kpi label="ACCURACY" value={fmt(activeRow.Accuracy)} note={`${selectedModel} held-out test`} /><Kpi label="MACRO F1" value={fmt(activeRow.MacroF1)} note="Class-balanced summary" accent="orange" /><Kpi label="AUROC OVR" value={fmt(activeRow.AUROC_OVR)} note="Macro one-vs-rest" /><Kpi label="AUPRC MACRO" value={fmt(activeRow.AUPRC_macro)} note="Imbalance-aware" accent="orange" /><Kpi label="INFERENCE" value={prediction ? `${fmt(prediction.latency_ms, 2)} ms` : '—'} note="Current request" /><Kpi label="TEST SAMPLES" value={metrics?.test_samples || records.length || '—'} note="Held-out predictions" /><Kpi label="BEST NEURAL" value={best} note="Selected by Macro F1" accent="orange" /><Kpi label="CONFIDENCE" value={prediction ? pct(prediction.confidence) : '—'} note="Current prediction" /></div>
-        <div className="dashboard-grid"><Card title="ECG SIGNAL" kicker={`Record ${sample?.record_id || '—'} · ${model?.sequence_length || 8} beats`} className="wave-card"><Waveform signal={prediction?.waveform || sample?.signal || []} probability={prediction?.probabilities} predicted={prediction?.class_name || 'N'} /><div className="wave-controls"><button onClick={() => analyze()}>↻ Re-analyze</button><span>Channel 0 · 360 Hz · real MIT-BIH sample</span></div></Card><Card title="CLASS PROBABILITY" kicker={prediction ? `${prediction.class_name} selected` : 'Awaiting inference'}><ProbabilityBars probabilities={prediction?.probabilities || { N: 0, S: 0, V: 0, F: 0, Q: 0 }} /></Card><Card title="TEMPORAL ATTENTION" kicker="Sequence focus"><Attention attention={prediction?.attention || []} /></Card><Card title="CONFUSION MATRIX" kicker="Loaded test predictions"><ConfusionMatrix matrix={matrix} /></Card><Card title="MODEL COMPARISON" kicker="Held-out test metrics" className="comparison-card"><div className="mini-table"><div className="mini-row header"><span>MODEL</span><span>F1</span><span>AUROC</span><span>AUPRC</span></div>{modelRows.map((r, i) => <div className={`mini-row ${String(r.Model || r.model) === best ? 'highlight' : ''}`} key={i}><span>{r.Model || r.model}</span><span>{fmt(r.MacroF1)}</span><span>{fmt(r.AUROC_OVR)}</span><span>{fmt(r.AUPRC_macro)}</span></div>)}</div></Card><Card title="CLASS DISTRIBUTION" kicker="Held-out test rows"><div className="dist-list">{classCounts.map(item => <div className="dist-row" key={item.key}><span className="dist-key"><i className="dot" style={{ background: colors[item.key] }} />{item.key}</span><div className="dist-track"><div style={{ width: `${Math.min(100, item.value / Math.max(...classCounts.map(x => x.value), 1) * 100)}%`, background: colors[item.key] }} /></div><strong>{item.value}</strong></div>)}</div></Card></div>
-        <div className="lower-grid"><Card title="ERROR ANALYSIS" kicker="Click a row for record context"><div className="error-summary"><span>False positives <b>{records.filter(r => r.correct === false && r.pred_class !== r.true_class).length}</b></span><span>Low confidence <b>{records.filter(r => Number(r.confidence) < .5).length}</b></span><span>Filtered {shownRecords.length}</span></div><div className="table-scroll"><table><thead><tr><th>RECORD</th><th>TRUE</th><th>PREDICTED</th><th>CONFIDENCE</th><th>STATUS</th></tr></thead><tbody>{shownRecords.slice(0, 12).map((r, i) => <tr key={i}><td>{r.record}</td><td><span className="class-tag" style={{ color: colors[r.true_class] }}>{r.true_class}</span></td><td><span className="class-tag" style={{ color: colors[r.pred_class] }}>{r.pred_class}</span></td><td>{pct(r.confidence)}</td><td><span className={r.correct ? 'ok-tag' : 'bad-tag'}>{r.correct ? 'CORRECT' : 'REVIEW'}</span></td></tr>)}</tbody></table></div></Card><Card title="MODEL INFORMATION" kicker="Current artifact contract"><dl className="info-grid"><dt>Framework</dt><dd>{model?.framework || 'PyTorch'}</dd><dt>Model version</dt><dd>{model?.model_version || '—'}</dd><dt>Input</dt><dd>{model?.samples_per_beat || 180} samples / beat</dd><dt>Sequence</dt><dd>{model?.sequence_length || 8} beats</dd><dt>Classes</dt><dd>{model?.classes?.join(' · ') || 'N · S · V · F · Q'}</dd><dt>Explainability</dt><dd>{explanations?.integrated_gradients_available ? 'Integrated Gradients' : 'Temporal attention'}</dd><dt>Scope</dt><dd>Retrospective research prototype</dd></dl></Card></div>
-        <footer>VIGIL · ECG ARRHYTHMIA ANALYTICS · Research prototype only · Metrics are sourced from repository artifacts and API responses.</footer>
-      </>}
-    </main>
-  </div>;
+  const content = view === 'Experiments' ? <Panel title="MODEL BENCHMARK / QUERY RESULT" tabs={['Query Result', 'Script Output']} activeTab={tab} onTab={setTab}><ResultTable rows={records} /><div className="metrics-ribbon">{rows.map(row => <div key={row.Model}><span>{row.Model}</span><b>{fmt(row.MacroF1)}</b><small>Macro F1</small></div>)}</div></Panel> : view === 'Records' ? <Panel title="HELD-OUT PREDICTIONS / QUERY RESULT"><ResultTable rows={records} /></Panel> : view === 'About' ? <Panel title="VIGIL / SCRIPT OUTPUT"><div className="about-console"><p><b>VIGIL</b> — Interpretable Temporal Deep Learning for ECG Arrhythmia Classification</p><p>Dataset: MIT-BIH Arrhythmia Database · 5-class grouped record evaluation · PyTorch · FastAPI · React/Vite</p><p>Scope: retrospective research prototype; not a medical diagnostic device.</p><p>Available artifacts: benchmark checkpoints, metrics, predictions, attention, Integrated Gradients, serving benchmark, and frontend contract examples.</p></div></Panel> : <>
+    <div className="workspace-row top-row"><Panel title="SQL / ANALYSIS EDITOR" tabs={['Practice: Write the Query']} activeTab="Practice: Write the Query" className="editor-panel"><SqlEditor model={selectedModel} record={sample?.record_id} prediction={prediction} /></Panel><Panel title="QUERY RESULT" tabs={['Query Result']} activeTab="Query Result" className="top-result"><ResultTable rows={displayRows} compact /><div className="result-footer">All rows fetched: {records.length} · {fmt(prediction?.latency_ms, 2)} ms inference · source: held-out artifact</div></Panel></div>
+    <div className="workspace-row bottom-row"><Connections model={model} metrics={metrics} /><Panel title="VIGIL / WORKSHEET" tabs={['Worksheet', 'Query Builder']} activeTab={tab} onTab={setTab} className="worksheet"><div className="worksheet-code"><div className="code-line comment">-- Live inference contract</div><div className="code-line"><b>SELECT</b> {selectedModel} AS MODEL,</div><div className="code-line">&nbsp;&nbsp;'{predictionClass}' AS PREDICTED_CLASS,</div><div className="code-line">&nbsp;&nbsp;{pct(prediction?.confidence)} AS CONFIDENCE,</div><div className="code-line">&nbsp;&nbsp;{model?.sequence_length || 8} AS SEQUENCE_LENGTH</div><div className="code-line"><b>FROM</b> MITBIH_INFERENCE;</div></div><div className="analysis-rail"><div className="analysis-result"><span>PREDICTION</span><b style={{ color: colors[predictionClass] }}>{labels[predictionClass]} ({predictionClass})</b><small>{pct(prediction?.confidence)} confidence</small></div><div className="analysis-result"><span>BEST MACRO F1</span><b>{fmt(bestMacro.MacroF1)}</b><small>{bestMacro.Model || '—'}</small></div><div className="analysis-result"><span>BEST AUROC</span><b>{fmt(bestAuroc.AUROC_OVR)}</b><small>{bestAuroc.Model || '—'}</small></div></div><div className="ecg-block"><div className="subhead">ECG SIGNAL · RECORD {sample?.record_id || '—'} · 360 HZ</div><Waveform signal={prediction?.waveform || sample?.signal || []} predicted={predictionClass} /></div><div className="prob-block"><div className="subhead">CLASS PROBABILITY</div><ProbabilityTable probabilities={prediction?.probabilities} /></div><div className="attention-block"><div className="subhead">TEMPORAL ATTENTION</div><AttentionStrip attention={prediction?.attention} /><small>Attention is descriptive, not a causal explanation.</small></div></Panel><Panel title="QUERY RESULT / SCRIPT OUTPUT" tabs={['Query Result', 'Model Comparison']} activeTab="Query Result" className="result-panel"><div className="result-tab-content"><div className="result-heading">{tab === 'Model Comparison' ? 'Model comparison' : 'Prediction result'} <span>✓ API response</span></div>{tab === 'Model Comparison' ? <div className="compact-comparison">{rows.map(row => <div className="comparison-row" key={row.Model}><span>{row.Model}</span><b>{fmt(row.MacroF1)}</b><b>{fmt(row.AUROC_OVR)}</b><b>{fmt(row.AUPRC_macro)}</b></div>)}</div> : <><div className="result-stat-grid"><div><span>PREDICTED</span><b style={{ color: colors[predictionClass] }}>{predictionClass}</b></div><div><span>CONFIDENCE</span><b>{pct(prediction?.confidence)}</b></div><div><span>MODEL</span><b>{selectedModel}</b></div></div><ProbabilityTable probabilities={prediction?.probabilities} /><div className="result-heading lower">EXPLANATION OUTPUT</div><p className="explain-note">{explanations?.integrated_gradients_available ? 'Integrated Gradients artifact available in ml/explanations.' : 'Temporal attention artifact available for attention-enabled checkpoints.'}</p></>}</div><div className="result-footer">Query executed successfully · model version {model?.model_version || '—'}</div></Panel></div>
+  </>;
+
+  return <div className="sql-shell"><header className="sql-header"><div className="app-title"><div className="app-logo">V</div><div><b>VIGIL</b><span>ECG ARRHYTHMIA WORKBENCH</span></div></div><div className="sql-nav">{['Dashboard', 'Experiments', 'Records', 'About'].map(item => <button key={item} className={view === item ? 'nav-selected' : ''} onClick={() => setView(item)}>{item}</button>)}</div><div className="header-status"><span className="online-dot" /> MODEL ONLINE <b>{model?.model_version || '—'}</b></div></header><div className="toolbar"><button className="run-btn" onClick={() => analyze(sample?.signal)}>▶ Run Analysis</button><button onClick={load}>↻ Refresh</button><span className="toolbar-separator" /><span>Connection: <b>VIGIL / MIT-BIH</b></span><span>Record: <b>{sample?.record_id || '—'}</b></span><span>Model: <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>{(model?.available_models || ['RNN']).map(name => <option key={name}>{name}</option>)}</select></span><span className="toolbar-right">{health?.status === 'ok' ? 'Query executed successfully' : 'API unavailable'}</span></div>{error && <div className="sql-error">{error}</div>}<main className="workbench">{loading ? <div className="loading">Connecting to VIGIL API…</div> : content}</main><footer className="sql-footer"><span>VIGIL · Research prototype only</span><span>Ln 14, Column 22 · 0.004 seconds · PyTorch / FastAPI</span></footer></div>;
 }
 
 createRoot(document.getElementById('root')).render(<Dashboard />);
