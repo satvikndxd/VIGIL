@@ -20,6 +20,7 @@ CONFIGS = ML / "configs"
 METRICS = ML / "metrics"
 PREDICTIONS = ML / "predictions"
 EXPLANATIONS = ML / "explanations"
+RESEARCH = ROOT / "research_results"
 
 BUNDLE = json.loads((CONFIGS / "inference_bundle.json").read_text())
 CLASS_NAMES = BUNDLE.get("class_names", ["N", "S", "V", "F", "Q"])
@@ -48,6 +49,16 @@ def load_metrics() -> dict[str, Any]:
 def load_predictions() -> pd.DataFrame:
     path = PREDICTIONS / "test_predictions.csv"
     return pd.read_csv(path) if path.exists() else pd.DataFrame()
+
+
+def research_csv(name: str) -> pd.DataFrame:
+    path = RESEARCH / name
+    return pd.read_csv(path) if path.exists() else pd.DataFrame()
+
+
+def research_json(name: str) -> dict[str, Any]:
+    path = RESEARCH / name
+    return json.loads(path.read_text()) if path.exists() else {}
 
 
 def waveform_payload(signal: list[float], limit: int = 720) -> list[float]:
@@ -104,6 +115,8 @@ def model_info():
         "parameter_count": parameter_count,
         "metrics_available": list(metrics),
         "research_scope": "Retrospective research prototype; not a medical diagnostic device.",
+        "research_final_model": research_json("final_metrics.json"),
+        "research_final_config": research_json("final_config.json"),
     }
 
 
@@ -121,6 +134,42 @@ def metrics():
     else:
         confusion = [[0 for _ in CLASS_NAMES] for _ in CLASS_NAMES]
     return {"models": comparison.to_dict(orient="records"), "raw": metrics_json, "best_neural_model": DEFAULT_MODEL, "class_distribution": class_distribution, "confusion_matrix": confusion, "test_samples": int(len(predictions))}
+
+
+@app.get("/research")
+def research_summary():
+    final_metrics = research_json("final_metrics.json")
+    final_config = research_json("final_config.json")
+    learned = research_csv("learned_morphology_results.csv")
+    comparison = research_csv("final_model_comparison.csv")
+    symbol_shift = research_csv("symbol_shift_analysis.csv")
+    record_generalization = research_csv("record_generalization.csv")
+    robustness = research_csv("final_robustness_results.csv")
+    seeds = research_csv("final_seed_results.csv")
+    per_class = research_csv("per_class_metrics_experiments.csv")
+    final_per_class = per_class[per_class.get("experiment", pd.Series(dtype=str)) == "features_rr_morphology"] if not per_class.empty else pd.DataFrame()
+    return {
+        "final_metrics": final_metrics,
+        "final_config": final_config,
+        "learned_morphology": learned.replace({np.nan: None}).to_dict(orient="records"),
+        "final_comparison": comparison.replace({np.nan: None}).to_dict(orient="records"),
+        "symbol_shift": symbol_shift.replace({np.nan: None}).to_dict(orient="records"),
+        "record_generalization": record_generalization.replace({np.nan: None}).to_dict(orient="records"),
+        "robustness": robustness.replace({np.nan: None}).to_dict(orient="records"),
+        "seed_results": seeds.replace({np.nan: None}).to_dict(orient="records"),
+        "final_per_class": final_per_class.replace({np.nan: None}).to_dict(orient="records"),
+        "active_api_model": DEFAULT_MODEL,
+        "research_final_model": final_metrics.get("model"),
+        "research_scope": "Retrospective research prototype; not a medical diagnostic device.",
+    }
+
+
+@app.get("/research/n-failures")
+def research_n_failures(limit: int = 100):
+    failures = research_csv("n_failure_analysis.csv")
+    if not failures.empty and "waveform_json" in failures.columns:
+        failures = failures.drop(columns=["waveform_json"])
+    return {"records": failures.head(max(1, min(limit, 100))).replace({np.nan: None}).to_dict(orient="records"), "total": int(len(failures))}
 
 
 @app.get("/sample-signal")

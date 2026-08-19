@@ -13,8 +13,12 @@ required = [
     'diagnosis/confusion_matrix_normalized.csv', 'diagnosis/split_integrity.json',
     'diagnosis/mapping_verification.json', 'configs/experiment_manifest.json',
     'checkpoints/RNN.pt', 'checkpoints/LSTM.pt', 'checkpoints/GRU.pt',
-    'checkpoints/BiLSTM.pt', 'checkpoints/BiLSTM_Attention.pt',
-    'checkpoints/CNN_BiLSTM_Attention.pt', 'checkpoints/hierarchical.pt'
+    'checkpoints/BiLSTM.pt',     'checkpoints/BiLSTM_Attention.pt', 'checkpoints/CNN_BiLSTM_Attention.pt', 'checkpoints/hierarchical.pt',
+    'morphology_feature_ablation.csv', 'learned_morphology_results.csv', 'symbol_shift_analysis.csv', 'record_generalization.csv',
+    'morphology_augmentation_results.csv', 'window_alignment_results.csv', 'n_failure_analysis.csv', 'final_model_comparison.csv',
+    'final_seed_results.csv', 'final_robustness_results.csv', 'final_model.pt', 'final_config.json', 'feature_schema.json',
+    'preprocessing_config.json', 'final_metrics.json', 'phase2_report.md', 'phase2/plots/symbol_shift_composition.png',
+    'phase2/plots/record_generalization.png', 'phase2/plots/n_failure_gallery.png', 'phase2/checkpoints/baseline_rr_morphology.pt'
 ]
 missing = [p for p in required if not (OUT / p).exists()]
 if missing: raise AssertionError(f'Missing artifacts: {missing}')
@@ -48,6 +52,12 @@ assert seed.groupby(seed['experiment'].str.rsplit('_seed_', n=1).str[0]).size().
 boot = pd.read_csv(OUT/'bootstrap_confidence_intervals.csv')
 assert set(boot.metric) == {'MacroF1','MacroAUROC'}
 assert (boot.ci_lower_95 <= boot.estimate).all() and (boot.estimate <= boot.ci_upper_95).all()
+phase2_final = json.loads((OUT/'final_metrics.json').read_text())
+assert phase2_final['model'] == 'RNN + RR + morphology'
+assert abs(float(phase2_final['MacroF1']) - 0.40123549379362033) < 1e-9
+assert len(pd.read_csv(OUT/'record_generalization.csv')) == 10
+assert len(pd.read_csv(OUT/'n_failure_analysis.csv')) == 100
+assert len(pd.read_csv(OUT/'final_seed_results.csv')) == 5
 cm_raw = pd.read_csv(OUT/'diagnosis/confusion_matrix_raw.csv', index_col=0)
 cm_norm = pd.read_csv(OUT/'diagnosis/confusion_matrix_normalized.csv', index_col=0)
 assert cm_raw.shape == (5,5) and cm_norm.shape == (5,5)

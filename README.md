@@ -160,6 +160,22 @@ The strongest measured overall candidate in this study was **RNN + RR interval +
 
 The requested artifacts are exported as `research_results/class_counts.csv`, `per_class_metrics.csv`, `confusion_matrix.png`, `ablation_results.csv`, `context_results.csv`, `augmentation_results.csv`, `architecture_results.csv`, `robustness_results.csv`, `seed_results.csv`, and `bootstrap_confidence_intervals.csv`. Run `python research/validate_results.py` to verify the artifact contract, mapping, leakage audit, bootstrap intervals, and five-seed families.
 
+## Phase 2 generalization study
+
+The Phase 2 study keeps the same 31/7/10 grouped record split and the same 4,154-sequence held-out test set. Candidate models are selected on validation Macro-F1; the held-out test set is not changed or tuned against. The full report is [`research_results/phase2_report.md`](research_results/phase2_report.md).
+
+| Model | Macro-F1 | Macro-AUROC | Macro-AUPRC |
+|---|---:|---:|---:|
+| Frozen RNN + RR + morphology baseline | **0.4012** | **0.7906** | **0.5963** |
+| Small CNN morphology + RNN | 0.1217 | 0.6120 | 0.2913 |
+| Small CNN morphology + Bi-LSTM | 0.1351 | 0.5579 | 0.2645 |
+| Small CNN morphology + Bi-LSTM + Attention | 0.1316 | 0.6074 | 0.2787 |
+| Final retained model | **0.4012** | **0.7906** | **0.5963** |
+
+### Key finding
+
+The measured Phase 2 learned-morphology candidates did not improve over the frozen handcrafted-morphology baseline on the held-out test set, despite validation-based selection. The project therefore **keeps RNN + RR + morphology** as the final model rather than forcing a CNN, Bi-LSTM, or attention model to win. The study adds real symbol-shift, per-record generalization, N-failure, morphology-augmentation, window-alignment, five-seed, and robustness artifacts under `research_results/`. N and F recall remain unresolved in the retained final model, so this phase does not claim minority-class or clinical superiority.
+
 ## Limitations
 
 The five-class grouping is a research mapping, not a clinical label system. The current run has substantial minority-class limitations, especially for F and N. Attention is descriptive rather than causal, and Integrated Gradients is an attribution diagnostic rather than a clinical explanation. The results are not external validation and should not be presented as clinical performance.

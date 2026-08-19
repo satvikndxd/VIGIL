@@ -1,0 +1,39 @@
+{
+  "feature_names": [
+    "r_peak_amplitude",
+    "amplitude_range",
+    "peak_to_peak",
+    "energy",
+    "rms",
+    "local_variance",
+    "local_std",
+    "mean_abs_slope",
+    "max_abs_slope",
+    "width_above_half_peak",
+    "qrs_width_proxy",
+    "rr_interval",
+    "previous_rr",
+    "rr_ratio",
+    "local_heart_rate",
+    "rr_std_local"
+  ],
+  "order": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "description": "Compact documented RR, rhythm, amplitude, energy, slope, width, and QRS proxy features. Width and QRS proxy are signal-support heuristics, not delineator annotations."
+}

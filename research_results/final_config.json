@@ -1,0 +1,8 @@
+{
+  "final_model": "RNN + RR + morphology",
+  "baseline_checkpoint": "checkpoints/RNN_rr_morphology.pt",
+  "test_split_source": "configs/split_lock.json",
+  "same_test_split_for_all_experiments": true,
+  "selection_rule": "Retain frozen baseline because no Phase 2 candidate improved held-out Macro-F1",
+  "feature_schema": "feature_schema.json"
+}

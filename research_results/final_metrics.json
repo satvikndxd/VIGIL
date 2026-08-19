@@ -1,0 +1,51 @@
+{
+  "model": "RNN + RR + morphology",
+  "MacroF1": 0.40123549379362033,
+  "MacroAUPRC": 0.5963220323855083,
+  "MacroAUROC": 0.790607924571247,
+  "N_recall": 0.0,
+  "F_recall": 0.0,
+  "source": "completed fixed-split study",
+  "selection_rule": "Frozen baseline retained: Phase 2 candidates were selected on validation Macro-F1 but did not improve held-out Macro-F1.",
+  "validation_selection_candidate": "CNN_morph_RNN",
+  "phase2_learned_candidate_test_rows": [
+    {
+      "name": "CNN_morph_RNN",
+      "MacroF1": 0.121712865925471,
+      "MacroAUPRC": 0.2912990465594717,
+      "MacroAUROC": 0.6119804428974591,
+      "N_recall": 0.0091666666666666,
+      "F_recall": 0.3333333333333333
+    },
+    {
+      "name": "CNN_morph_BiLSTM",
+      "MacroF1": 0.1350651152425431,
+      "MacroAUPRC": 0.2644789877325751,
+      "MacroAUROC": 0.5579123146863392,
+      "N_recall": 0.0,
+      "F_recall": 0.3333333333333333
+    },
+    {
+      "name": "CNN_morph_BiLSTM_Attention",
+      "MacroF1": 0.1315539626192454,
+      "MacroAUPRC": 0.2786971463032821,
+      "MacroAUROC": 0.6074186952492525,
+      "N_recall": 0.0,
+      "F_recall": 0.4166666666666667
+    },
+    {
+      "name": "baseline_rr_morphology",
+      "MacroF1": 0.4300599008980963,
+      "MacroAUPRC": 0.6102244366368276,
+      "MacroAUROC": 0.8135982422624044,
+      "N_recall": 0.0,
+      "F_recall": 0.0
+    }
+  ],
+  "ECE": 0.22164485329321137,
+  "parameter_count": 8517,
+  "model_size_kb": 38.2861328125,
+  "p50_inference_ms_per_example": null,
+  "p95_inference_ms_per_example": null,
+  "latency_note": "Phase 2 final baseline latency was not remeasured from the frozen feature checkpoint; no value is fabricated."
+}

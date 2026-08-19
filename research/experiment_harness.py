@@ -222,7 +222,7 @@ def train(kind,Xtr,ytr,Xva,yva,loss_mode='class_weight',augment=False,sampler=Fa
 
 
 def one_experiment(name,kind,Xtr,ytr,Xva,yva,Xte,yte,**kwargs):
-    started=time.perf_counter(); train_kwargs={k:v for k,v in kwargs.items() if k in ['loss_mode','augment','sampler','seed','epochs']}; model=train(kind,Xtr,ytr,Xva,yva,**train_kwargs); probs,att=predict(model,Xte); score,detail,pred=metrics(yte,probs); score.update({'experiment':name,'architecture':kind,'loss':kwargs.get('loss_mode','none'),'sampler':kwargs.get('sampler',False),'augmentation':kwargs.get('augment',False),'seed':kwargs.get('seed',SEED),'context':Xtr.shape[1],'feature_mode':kwargs.get('feature_mode','waveform'),'Seconds':time.perf_counter()-started,'Params':sum(p.numel() for p in model.parameters())}); return score,detail,pred,probs,model,att
+    started=time.perf_counter(); train_kwargs={k:v for k,v in kwargs.items() if k in ['loss_mode','augment','sampler','seed','epochs']}; model=train(kind,Xtr,ytr,Xva,yva,**train_kwargs); probs,att=predict(model,Xte); score,detail,pred=metrics(yte,probs); score.update({'N_recall':float(detail.loc[detail['class']=='N','recall'].iloc[0]),'F_recall':float(detail.loc[detail['class']=='F','recall'].iloc[0]),'experiment':name,'architecture':kind,'loss':kwargs.get('loss_mode','none'),'sampler':kwargs.get('sampler',False),'augmentation':kwargs.get('augment',False),'seed':kwargs.get('seed',SEED),'context':Xtr.shape[1],'feature_mode':kwargs.get('feature_mode','waveform'),'Seconds':time.perf_counter()-started,'Params':sum(p.numel() for p in model.parameters())}); return score,detail,pred,probs,model,att
 
 # Prepare only the active split at a time; the test records and labels remain fixed.
 def data_for(context, feature_mode):
@@ -291,6 +291,11 @@ best_row=candidate_table.iloc[0]; best_name=str(best_row['experiment'])
 if best_name.startswith('features_rr_morphology') or best_name=='RNN_rr_morphology_selected': selected_model=feature_selected_model; selected_X=feature_selected_data[4]; selected_probs=feature_selected_probs; selected_detail=feature_selected_detail; selected_arch='RNN_rr_morphology'
 elif best_name.startswith('hierarchical'): selected_model=None; selected_X=Xte; selected_probs=hier_probs; selected_detail=hier_detail; selected_arch='hierarchical_RNN'
 else: selected_model=arch_models[best_name]; selected_X=Xte; selected_probs=arch_predictions[best_name][1]; selected_detail=arch_predictions[best_name][2]; selected_arch=best_name
+if selected_arch == 'RNN_rr_morphology':
+    torch.save({'state_dict':selected_model.state_dict(),'model_type':'RNN_RR_MORPHOLOGY','class_names':CLASSES,'feature_names':['previous_rr','next_rr','local_hr','rr_ratio','mean','std','min','max','range','energy','slope','zero_crossings'],'config':CFG},OUT/'checkpoints/RNN_rr_morphology.pt')
+    selected_pred_df=feature_selected_data[6].copy(); selected_pred_df['true_class']=[CLASSES[int(i)] for i in feature_selected_data[5]]; selected_pred_df['pred_class']=[CLASSES[int(i)] for i in selected_probs.argmax(1)]; selected_pred_df['confidence']=selected_probs.max(1); selected_pred_df['correct']=selected_pred_df['true_class']==selected_pred_df['pred_class']
+    for i,c in enumerate(CLASSES): selected_pred_df[f'prob_{c}']=selected_probs[:,i]
+    selected_pred_df.to_csv(OUT/'baseline_rr_morphology_predictions.csv',index=False)
 # Bootstrap 95% CIs for the selected strongest candidate on the fixed test split.
 rng=np.random.default_rng(SEED); boot=[]
 for b in range(500):
