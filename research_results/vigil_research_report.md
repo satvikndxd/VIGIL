@@ -4,7 +4,7 @@
 
 ### TL;DR
 
-This study evaluated whether progressively more expressive, imbalance-aware, and domain-generalized models could improve five-class MIT-BIH beat classification under a locked record-level split. The final decision is to **retain the compact RNN + RR + handcrafted morphology baseline**: no Phase 2 or Phase 3 candidate passed the predefined replacement gate requiring a higher overall Macro-F1, no major Macro-AUPRC degradation, improved N or F recall, and stable behavior across seeds.
+This study evaluated whether progressively more expressive, imbalance-aware, and domain-generalized models could improve five-class MIT-BIH beat classification under a locked record-level split. The final decision is to **retain the compact RNN + RR + handcrafted morphology baseline**: no Phase 2 or Phase 3 candidate passed the predefined replacement gate requiring a higher overall Macro-F1, no major Macro-AUPRC degradation, improved N or F recall, and stable behavior across seeds. The result must be interpreted against the **SOTA illusion** created by random beat-level splits. When beats from the same patient record appear in both training and test data, patient-specific baseline morphology, electrode configuration, noise signature, and annotation context leak across the split; this can produce apparently spectacular 98%+ accuracy without demonstrating out-of-distribution generalization. VIGIL instead treats the patient record as the statistical unit and reports its **0.40 Macro-F1 as an unvarnished OOD baseline**, not as a low score relative to leakage-contaminated benchmarks. In comic-book terms, random splitting is like recognizing a character by their color palette; record-level splitting forces the model to recognize them when drawn in a completely different art style.
 
 | Final-model result | Estimate | Evaluation condition |
 |---|---:|---|
@@ -21,7 +21,7 @@ The report describes these negative results as useful evidence about the limits 
 
 ## Study Objective, Data Contract, and Reproducibility
 
-The objective was to determine whether interventions targeting class imbalance, temporal context, morphology representation, model architecture, hierarchical decision structure, original-symbol supervision, and record-domain invariance could improve held-out five-class performance without sacrificing ranking quality or reproducibility.
+The objective was to determine whether interventions targeting class imbalance, temporal context, morphology representation, model architecture, hierarchical decision structure, original-symbol supervision, and record-domain invariance could improve held-out five-class performance without sacrificing ranking quality or reproducibility. This objective is deliberately stricter than the common random beat-level evaluation protocol, in which neighboring beats from the same record can cross the train/test boundary and make the task resemble patient identification rather than OOD morphology recognition. Prior inter-patient ECG work similarly treats separation across patients as a distinct generalization setting rather than an interchangeable split convention [3]. The fixed record-level split is therefore not a cosmetic evaluation choice: it is the central experimental control that converts apparently high in-distribution performance into a more difficult but scientifically meaningful test of transfer across patients and recording conditions.
 
 | Study component | Locked specification |
 |---|---|
@@ -40,6 +40,8 @@ The objective was to determine whether interventions targeting class imbalance, 
 | Leakage audit | Record leakage: absent; subject leakage: absent; mapping verification: exact |
 
 The evaluation contract intentionally prioritizes Macro-F1 and per-class recall rather than accuracy, because the research question concerns minority-class and cross-record behavior. The locked split, exact mapping audit, and exported predictions provide the basis for reproducing every reported comparison.
+
+[Insert Figure 1: VIGIL architecture and inference pathway, showing the 90/90 beat-centered waveform window, eight-beat temporal context, RR features, handcrafted morphology branch, recurrent encoder, five-class output, and optional explanation artifacts.]
 
 ### Mapped-Class Composition
 
@@ -170,7 +172,13 @@ The hierarchical decomposition improved balanced accuracy and accuracy relative 
 | 0.25 | 0.3999 | **0.6005** | **0.7923** | 0.5076 | 0.0000 | 0.1667 | 0.1694 |
 | 0.50 | **0.4186** | 0.5825 | 0.7709 | **0.5190** | 0.0000 | 0.1667 | 0.1657 |
 
-The multi-task head is the strongest evidence that auxiliary original-symbol supervision can alter the minority decision boundary: F recall increased from zero for selected settings. However, λ=0.25 remained below the baseline on Macro-F1, while λ=0.50 increased Macro-F1 but degraded both ranking metrics, demonstrating a precision–recall and ranking trade-off rather than a clean win. N recall remained zero across all settings, indicating that original-symbol supervision did not resolve the dominant N failure.
+The multi-task head is the strongest evidence that auxiliary original-symbol supervision can alter the minority decision boundary: F recall increased from zero for selected settings. The optimized objective was
+
+$$
+\mathcal{L}_{MT} = \mathcal{L}_{CE}(y, \hat{y}) + \lambda \mathcal{L}_{CE}(z, \hat{z}),
+$$
+
+where $y$ is the mapped five-class target, $\hat{y}$ is the primary classifier output, $z$ is the original-symbol target, and $\hat{z}$ is the auxiliary symbol prediction. However, λ=0.25 remained below the baseline on Macro-F1, while λ=0.50 increased Macro-F1 but degraded both ranking metrics, demonstrating a precision–recall and ranking trade-off rather than a clean win. N recall remained zero across all settings, indicating that original-symbol supervision did not resolve the dominant N failure.
 
 ### Domain-Adversarial Representation Learning
 
@@ -180,7 +188,13 @@ The multi-task head is the strongest evidence that auxiliary original-symbol sup
 | CNN morphology + original-symbol loss | 0.1823 | 0.4699 | 0.7204 | 0.0017 | 0.0000 |
 | CNN/RNN domain-adversarial representation | 0.1272 | 0.2875 | 0.5995 | 0.0025 | 0.0000 |
 
-The domain-adversarial model failed to preserve task performance while attempting to suppress record-domain information. A plausible mechanism is **gradient interference** between the reversal-layer domain objective and the small recurrent task representation under the short training schedule; this is an interpretation, not a directly isolated causal measurement. The result demonstrates that domain invariance must be introduced with capacity, optimization, and domain-support controls rather than assumed to improve cross-record generalization automatically.
+The domain-adversarial model failed to preserve task performance while attempting to suppress record-domain information. With a gradient-reversal layer, the intended objective can be written as
+
+$$
+\mathcal{L}_{DANN} = \mathcal{L}_{task}(y, \hat{y}) - \gamma \mathcal{L}_{domain}(d, \hat{d}),
+$$
+
+where $d$ denotes the record-domain label, $\hat{d}$ is the domain prediction, and $\gamma$ controls the adversarial pressure. A plausible mechanism is **gradient interference** between the reversal-layer domain objective and the small recurrent task representation under the short training schedule; this is an interpretation, not a directly isolated causal measurement. The result demonstrates that domain invariance must be introduced with capacity, optimization, and domain-support controls rather than assumed to improve cross-record generalization automatically.
 
 ### Original-Symbol Shift and N-Failure Diagnosis
 
@@ -197,6 +211,12 @@ The domain-adversarial model failed to preserve task performance while attemptin
 
 The mapped N count is not absent from training, yet original-symbol N has no validation support and test N beats are completely misclassified, frequently as V in the N-failure gallery. The F estimate is intrinsically unstable because the held-out support is very small; a single additional correct or incorrect prediction materially changes recall. These observations make cross-record/original-symbol composition shift the leading root-cause hypothesis, with representation ambiguity as a coupled limitation rather than simple mapped-class under-sampling.
 
+From a biomedical signal-processing perspective, the N-to-V confusion is plausible under an OOD shift in patient-specific conduction morphology. A normal sinus beat is not guaranteed to produce a narrow, stereotyped QRS complex: when conduction encounters a refractory bundle branch, the impulse can propagate aberrantly, producing a bundle-branch-block-like complex with increased width, slurred depolarization, altered terminal forces, and beat-to-beat morphology that is atypical for that patient’s learned baseline. A ventricular ectopic beat, by contrast, also commonly manifests as a broad and morphologically unusual QRS complex. In the feature space available to a model that has not seen the patient’s baseline or that specific conduction phenotype, the width, energy, slope, and QRS-proxy features of an aberrantly conducted normal beat can therefore lie closer to the V manifold than to the learned N manifold. This is a mechanistic interpretation of the observed error pattern, not a retrospective clinical adjudication of individual beats; the dataset annotations and waveform morphology would require expert review to establish the precise physiological cause for each error.
+
+[Insert Figure 2: Record-level generalization heatmap, linking held-out record identity and original-symbol composition to per-class recall and Macro-F1.]
+
+[Insert Figure 3: N-failure gallery, showing representative held-out N waveforms from records 108 and 104, their handcrafted feature profiles, predicted V probabilities, and corresponding annotation symbols.]
+
 ### Baseline Confusion Matrix: Raw Counts
 
 | True \\ Predicted | N | S | V | F | Q |
@@ -208,6 +228,8 @@ The mapped N count is not absent from training, yet original-symbol N has no val
 | Q | 0 | 94 | 172 | 876 | 58 |
 
 The raw matrix shows that N is distributed primarily into S and V, while Q is distributed heavily into S and F despite high Q precision. F is almost entirely absorbed by S and V. This is not the signature of one uniformly weak classifier; it is a structured set of class confusions aligned with record-specific morphology and the original-symbol mixture.
+
+[Insert Figure 4: Baseline raw and row-normalized confusion matrices, displayed side by side with class labels N/S/V/F/Q.]
 
 ### Baseline Confusion Matrix: Row-Normalized
 
@@ -233,6 +255,8 @@ The normalized matrix confirms perfect N failure and near-total F failure while 
 | 122 | No modeling rows | No modeling rows | No modeling rows | No modeling rows | No modeling rows | Explicit empty-record handling |
 
 Performance varies substantially across held-out records, with record 108 near failure and record 200 materially stronger. This heterogeneity is difficult to reconcile with a pure global class-imbalance explanation and is more consistent with domain or symbol-composition shift. Record 122 is retained explicitly as empty after documented filtering rather than silently removed, preserving the integrity of the locked record list.
+
+[Insert Figure 5: Record-level heatmap of Macro-F1, Macro-AUPRC, Macro-AUROC, and per-class recall across the ten locked test records.]
 
 ### Five-Seed Stability
 
@@ -331,3 +355,58 @@ The scientifically correct outcome is therefore **baseline retention with explic
 [1]: https://physionet.org/content/mitdb/1.0.0/ "MIT-BIH Arrhythmia Database, PhysioNet"
 
 [2]: https://www.kaggle.com/datasets/abdallahwagih/mit-bih-arrhythmia-database "MIT-BIH Arrhythmia Database Kaggle mirror"
+
+[3]: https://pmc.ncbi.nlm.nih.gov/articles/PMC8181174/ "Interpatient ECG Heartbeat Classification with an Adversarial Network"
+
+## Appendix: Computational Budget and Reproducibility
+
+The following appendix separates **recorded implementation settings** from an **assumed reference execution profile**. This distinction is necessary because publication reproducibility requires that reported metrics correspond to the committed code and artifacts, while a paper may also specify a standardized hardware profile for independent reruns.
+
+### Recorded implementation contract
+
+| Component | Recorded setting |
+|---|---|
+| Framework | PyTorch |
+| Data loader batch size | 128 by default in the experiment harness |
+| Training schedule | 3 epochs by default for the benchmark harness |
+| Optimizer in committed harness | `torch.optim.Adam` |
+| Primary selection metric | Validation Macro-F1, with Macro-AUPRC as tie-break context |
+| Random seeds | 42, 43, 44, 45, 46 for the reported seed study |
+| Bootstrap resamples | 500 |
+| Test examples | 4,154 |
+| Test-set hash | `6866fbcc631936f84892df70dee14f2193ebb731a9ea30d48eaa7268ef282be8` |
+| Final checkpoint | `checkpoints/RNN_rr_morphology.pt` |
+| Split manifest | `research_results/configs/split_lock.json` |
+
+The recorded optimizer is Adam rather than AdamW; this is reported explicitly to prevent an apparently minor optimizer substitution from being mistaken for an exact reproduction. All quantitative results in the manuscript refer to the committed experiment artifacts and the locked test split, not to an unrecorded reimplementation.
+
+### Assumed reference execution profile
+
+| Component | Reference assumption |
+|---|---|
+| GPU | 1 × NVIDIA RTX 3080, 10 GB class device |
+| CPU | Contemporary multi-core x86-64 CPU |
+| Host memory | At least 16 GB RAM |
+| Python | Python 3.12-compatible environment |
+| Framework | PyTorch |
+| Proposed optimizer for a future standardized rerun | AdamW |
+| Proposed batch size for a future standardized rerun | 128 |
+| Precision | FP32 unless a controlled mixed-precision ablation is explicitly added |
+| Determinism | Fixed split seed, fixed experiment seed, recorded package versions, and persisted predictions |
+
+The RTX 3080 and AdamW entries are reference assumptions for a future standardized rerun, not claims about the hardware or optimizer used to generate the present metrics. A future paper revision should either rerun every result under that standardized profile or remove the assumed profile and report only the exact execution environment captured by the repository.
+
+### Artifact-level reproducibility
+
+| Artifact | Function |
+|---|---|
+| `research_results/configs/split_lock.json` | Locks record and subject partitions and leakage checks |
+| `research_results/configs/experiment_manifest.json` | Records seeds, contexts, architectures, perturbations, and bootstrap size |
+| `research_results/final_config.json` | Records final-model selection and checkpoint contract |
+| `research_results/phase3_metrics.json` | Records final Phase 3 gate outcome |
+| `research_results/phase3_bootstrap_results.csv` | Records bootstrap point estimates and confidence intervals |
+| `research_results/phase3_calibration.csv` | Records uncalibrated and temperature-scaled calibration results |
+| `research_results/phase3_robustness.csv` | Records controlled corruption outcomes |
+| `research_results/vigil_research_report.md` | This manuscript and its quantitative synthesis |
+
+Exact reproduction requires preserving the locked test set, preprocessing metadata, original-symbol mapping, model checkpoint, random seeds, and prediction files. Reproducing only the aggregate scores without these artifacts would not reproduce the OOD evaluation itself.
