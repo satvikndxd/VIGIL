@@ -114,7 +114,13 @@ def metrics():
         comparison = comparison.rename(columns={"Unnamed: 0": "Model"})
     comparison = comparison.replace({np.nan: None})
     metrics_json = load_metrics()
-    return {"models": comparison.to_dict(orient="records"), "raw": metrics_json, "best_neural_model": DEFAULT_MODEL}
+    predictions = load_predictions()
+    class_distribution = {name: int((predictions.get("true_class", pd.Series(dtype=str)) == name).sum()) for name in CLASS_NAMES}
+    if not predictions.empty and "true_class" in predictions.columns and "pred_class" in predictions.columns:
+        confusion = pd.crosstab(predictions["true_class"], predictions["pred_class"]).reindex(index=CLASS_NAMES, columns=CLASS_NAMES, fill_value=0).astype(int).values.tolist()
+    else:
+        confusion = [[0 for _ in CLASS_NAMES] for _ in CLASS_NAMES]
+    return {"models": comparison.to_dict(orient="records"), "raw": metrics_json, "best_neural_model": DEFAULT_MODEL, "class_distribution": class_distribution, "confusion_matrix": confusion, "test_samples": int(len(predictions))}
 
 
 @app.get("/sample-signal")
