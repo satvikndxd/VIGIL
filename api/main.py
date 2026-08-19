@@ -148,6 +148,20 @@ def research_summary():
     seeds = research_csv("final_seed_results.csv")
     per_class = research_csv("per_class_metrics_experiments.csv")
     final_per_class = per_class[per_class.get("experiment", pd.Series(dtype=str)) == "features_rr_morphology"] if not per_class.empty else pd.DataFrame()
+    phase3 = {
+        "metrics": research_json("phase3_metrics.json"),
+        "config": research_json("phase3_best_config.json"),
+        "representation_ablation": research_csv("phase3_representation_ablation.csv"),
+        "symbol_balance": research_csv("phase3_symbol_balance.csv"),
+        "multitask": research_csv("phase3_multitask.csv"),
+        "domain_adversarial": research_csv("phase3_domain_adversarial.csv"),
+        "record_generalization": research_csv("phase3_record_generalization.csv"),
+        "calibration": research_csv("phase3_calibration.csv"),
+        "robustness": research_csv("phase3_robustness.csv"),
+        "seed_results": research_csv("phase3_seed_results.csv"),
+        "bootstrap": research_csv("phase3_bootstrap_results.csv"),
+    }
+    phase3 = {key: (value.replace({np.nan: None}).to_dict(orient="records") if isinstance(value, pd.DataFrame) else value) for key, value in phase3.items()}
     return {
         "final_metrics": final_metrics,
         "final_config": final_config,
@@ -158,6 +172,7 @@ def research_summary():
         "robustness": robustness.replace({np.nan: None}).to_dict(orient="records"),
         "seed_results": seeds.replace({np.nan: None}).to_dict(orient="records"),
         "final_per_class": final_per_class.replace({np.nan: None}).to_dict(orient="records"),
+        "phase3": phase3,
         "active_api_model": DEFAULT_MODEL,
         "research_final_model": final_metrics.get("model"),
         "research_scope": "Retrospective research prototype; not a medical diagnostic device.",

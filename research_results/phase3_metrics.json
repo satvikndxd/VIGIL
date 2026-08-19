@@ -1,0 +1,11 @@
+{
+  "model": "RNN + RR + morphology",
+  "MacroF1": 0.40123549379362033,
+  "MacroAUPRC": 0.5963220323855083,
+  "MacroAUROC": 0.790607924571247,
+  "N_recall": 0.0,
+  "F_recall": 0.0,
+  "selected_phase3_candidate": "domain_adversarial",
+  "replacement_gate_passed": false,
+  "reason": "No Phase 3 candidate passed all replacement gates; frozen baseline retained."
+}

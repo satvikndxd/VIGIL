@@ -176,6 +176,24 @@ The Phase 2 study keeps the same 31/7/10 grouped record split and the same 4,154
 
 The measured Phase 2 learned-morphology candidates did not improve over the frozen handcrafted-morphology baseline on the held-out test set, despite validation-based selection. The project therefore **keeps RNN + RR + morphology** as the final model rather than forcing a CNN, Bi-LSTM, or attention model to win. The study adds real symbol-shift, per-record generalization, N-failure, morphology-augmentation, window-alignment, five-seed, and robustness artifacts under `research_results/`. N and F recall remain unresolved in the retained final model, so this phase does not claim minority-class or clinical superiority.
 
+## Phase 3 domain-generalized representation learning
+
+Phase 3 continued from the frozen Phase 2 baseline on the same locked test records and five-class target. The full measured report is [`research_results/phase3_report.md`](research_results/phase3_report.md). Historical Phase 1 and Phase 2 results remain preserved and distinguishable.
+
+| Model / representation | Macro-F1 | Macro-AUPRC | Macro-AUROC | N recall | F recall |
+|---|---:|---:|---:|---:|---:|
+| Frozen RNN + RR + morphology | **0.4012** | **0.5963** | **0.7906** | 0.0000 | 0.0000 |
+| Symbol-aware sampler | 0.2863 | 0.5524 | 0.7784 | 0.0000 | 0.0000 |
+| Multi-task symbol head, λ=0.25 | 0.3999 | 0.6005 | 0.7923 | 0.0000 | 0.1667 |
+| Domain-adversarial CNN/RNN | 0.1272 | 0.2875 | 0.5995 | 0.0025 | 0.0000 |
+| Phase 3 final | **0.4012** | **0.5963** | **0.7906** | 0.0000 | 0.0000 |
+
+### Phase 3 key finding
+
+Symbol-aware sampling and loss weighting, auxiliary original-symbol supervision, and a small domain-adversarial representation did **not** satisfy the replacement gate. Multi-task learning produced an isolated F-recall increase, but it did not improve Macro-F1 and was not stable enough to replace the frozen baseline. The current recommended model therefore remains RNN + RR + handcrafted morphology. Calibration is available as an explicit trade-off: validation-only temperature scaling reduced ECE from 0.2216 to 0.1447 and Brier from 0.6703 to 0.6519, while reducing Macro-AUPRC and Macro-AUROC. No clinical superiority or noise immunity is claimed.
+
+Phase 3 artifacts include `phase3_symbol_balance.csv`, `phase3_multitask.csv`, `phase3_domain_adversarial.csv`, `phase3_representation_ablation.csv`, `phase3_record_generalization.csv`, `phase3_n_failure_analysis.csv`, `phase3_seed_results.csv`, `phase3_bootstrap_results.csv`, `phase3_calibration.csv`, `phase3_robustness.csv`, `phase3_best_model.pt`, `phase3_best_config.json`, `phase3_metrics.json`, and the frozen baseline files under `research_results/phase3/`.
+
 ## Limitations
 
 The five-class grouping is a research mapping, not a clinical label system. The current run has substantial minority-class limitations, especially for F and N. Attention is descriptive rather than causal, and Integrated Gradients is an attribution diagnostic rather than a clinical explanation. The results are not external validation and should not be presented as clinical performance.

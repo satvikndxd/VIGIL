@@ -47,3 +47,9 @@ button { cursor: pointer; }
 .robustness-table { overflow: auto; }
 @media (max-width: 1100px) { .research-grid { grid-template-columns: repeat(2, 1fr); } .research-headline { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 720px) { .research-grid { grid-template-columns: 1fr; } .research-headline { grid-template-columns: 1fr; } }
+
+.phase3-grid { display: grid; grid-template-columns: 1.35fr 1fr 1.25fr; gap: 8px; padding: 8px; }
+.phase3-table { border: 1px solid var(--line); background: #fff; overflow: auto; }
+.phase3-table .subhead { padding: 8px 10px 5px; }
+.phase3-table .result-table th, .phase3-table .result-table td { font-size: 9px; padding: 5px 6px; white-space: nowrap; }
+@media (max-width: 1100px) { .phase3-grid { grid-template-columns: 1fr; } }

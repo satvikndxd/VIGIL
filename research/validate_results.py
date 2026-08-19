@@ -18,7 +18,12 @@ required = [
     'morphology_augmentation_results.csv', 'window_alignment_results.csv', 'n_failure_analysis.csv', 'final_model_comparison.csv',
     'final_seed_results.csv', 'final_robustness_results.csv', 'final_model.pt', 'final_config.json', 'feature_schema.json',
     'preprocessing_config.json', 'final_metrics.json', 'phase2_report.md', 'phase2/plots/symbol_shift_composition.png',
-    'phase2/plots/record_generalization.png', 'phase2/plots/n_failure_gallery.png', 'phase2/checkpoints/baseline_rr_morphology.pt'
+    'phase2/plots/record_generalization.png', 'phase2/plots/n_failure_gallery.png', 'phase2/checkpoints/baseline_rr_morphology.pt',
+    'phase3_symbol_balance.csv', 'phase3_multitask.csv', 'phase3_domain_adversarial.csv', 'phase3_representation_ablation.csv',
+    'phase3_record_generalization.csv', 'phase3_n_failure_analysis.csv', 'phase3_seed_results.csv', 'phase3_bootstrap_results.csv',
+    'phase3_calibration.csv', 'phase3_robustness.csv', 'phase3_best_model.pt', 'phase3_best_config.json', 'phase3_metrics.json',
+    'phase3_report.md', 'phase3/plots/record_generalization_phase3.png', 'phase3/baseline_metrics.json',
+    'phase3/baseline_predictions.csv', 'phase3/baseline_checkpoint.pt'
 ]
 missing = [p for p in required if not (OUT / p).exists()]
 if missing: raise AssertionError(f'Missing artifacts: {missing}')
@@ -58,6 +63,17 @@ assert abs(float(phase2_final['MacroF1']) - 0.40123549379362033) < 1e-9
 assert len(pd.read_csv(OUT/'record_generalization.csv')) == 10
 assert len(pd.read_csv(OUT/'n_failure_analysis.csv')) == 100
 assert len(pd.read_csv(OUT/'final_seed_results.csv')) == 5
+phase3_final = json.loads((OUT/'phase3_metrics.json').read_text())
+assert phase3_final['replacement_gate_passed'] is False
+assert phase3_final['model'] == 'RNN + RR + morphology'
+assert abs(float(phase3_final['MacroF1']) - 0.40123549379362033) < 1e-9
+p3_boot = pd.read_csv(OUT/'phase3_bootstrap_results.csv')
+assert set(p3_boot.metric) == {'MacroF1','MacroAUROC','MacroAUPRC'} and len(p3_boot) == 3
+assert (p3_boot.ci_lower_95 <= p3_boot.estimate).all() and (p3_boot.estimate <= p3_boot.ci_upper_95).all()
+p3_seed = pd.read_csv(OUT/'phase3_seed_results.csv')
+assert len(p3_seed) == 10 and set(p3_seed.model) == {'frozen_baseline','phase3_symbol_loss'}
+assert len(pd.read_csv(OUT/'phase3_record_generalization.csv')) >= 9
+assert len(pd.read_csv(OUT/'phase3_n_failure_analysis.csv')) == 100
 cm_raw = pd.read_csv(OUT/'diagnosis/confusion_matrix_raw.csv', index_col=0)
 cm_norm = pd.read_csv(OUT/'diagnosis/confusion_matrix_normalized.csv', index_col=0)
 assert cm_raw.shape == (5,5) and cm_norm.shape == (5,5)

@@ -1,0 +1,2 @@
+MacroF1,MacroAUPRC,MacroAUROC,BalancedAccuracy,Accuracy,N_recall,F_recall,experiment,validation_MacroF1,architecture,Params
+0.12723933870615936,0.28753556468162433,0.5995074802449138,0.22446125461254612,0.3040442946557535,0.0025,0.0,domain_adversarial,0.30914242652082996,small_CNN_RNN_GRL,2818

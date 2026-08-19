@@ -1,0 +1,18 @@
+{
+  "selected_candidate": "domain_adversarial",
+  "replacement_gate_passed": false,
+  "test_split": [
+    "104",
+    "108",
+    "109",
+    "119",
+    "122",
+    "124",
+    "200",
+    "209",
+    "214",
+    "220"
+  ],
+  "test_examples": 4154,
+  "selection_rule": "validation Macro-F1 first; secondary Macro-AUPRC, AUROC, Balanced Accuracy, N/F recall; baseline replacement requires all gates"
+}
