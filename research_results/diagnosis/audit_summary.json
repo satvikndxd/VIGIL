@@ -1,0 +1,15 @@
+{
+  "model_type": "RNN",
+  "train_records": 31,
+  "validation_records": 7,
+  "test_records": 10,
+  "train_sequences": 5567,
+  "validation_sequences": 2570,
+  "test_sequences": 4154,
+  "mapping_exact": true,
+  "record_leakage": false,
+  "subject_leakage": false,
+  "macro_f1": 0.2861082627759036,
+  "macro_auprc": 0.5613816826032948,
+  "macro_auroc": 0.7719874974843011
+}

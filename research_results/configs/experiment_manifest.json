@@ -1,0 +1,170 @@
+{
+  "selected_strongest_candidate": "RNN_rr_morphology",
+  "selected_candidate_score": 0.40123549379362033,
+  "seed": 42,
+  "split_lock": {
+    "seed": 42,
+    "train_records": [
+      "100",
+      "101",
+      "102",
+      "103",
+      "105",
+      "106",
+      "107",
+      "113",
+      "114",
+      "115",
+      "116",
+      "117",
+      "118",
+      "121",
+      "123",
+      "201",
+      "202",
+      "205",
+      "208",
+      "212",
+      "213",
+      "217",
+      "219",
+      "221",
+      "222",
+      "223",
+      "228",
+      "230",
+      "231",
+      "232",
+      "234"
+    ],
+    "validation_records": [
+      "111",
+      "112",
+      "203",
+      "207",
+      "210",
+      "215",
+      "233"
+    ],
+    "test_records": [
+      "104",
+      "108",
+      "109",
+      "119",
+      "122",
+      "124",
+      "200",
+      "209",
+      "214",
+      "220"
+    ],
+    "train_subjects": [
+      "103",
+      "219",
+      "23",
+      "24",
+      "32",
+      "39",
+      "56",
+      "59",
+      "61",
+      "63",
+      "65",
+      "68",
+      "69",
+      "72",
+      "73",
+      "75",
+      "76",
+      "80",
+      "83",
+      "84"
+    ],
+    "validation_subjects": [
+      "43",
+      "47",
+      "54",
+      "57",
+      "81",
+      "89"
+    ],
+    "test_subjects": [
+      "51",
+      "53",
+      "62",
+      "64",
+      "66",
+      "77",
+      "87"
+    ],
+    "record_intersections": {
+      "train_val": [],
+      "train_test": [],
+      "val_test": []
+    },
+    "subject_intersections": {
+      "train_val": [],
+      "train_test": [],
+      "val_test": []
+    },
+    "no_record_leakage": true,
+    "no_subject_leakage": true
+  },
+  "primary_metric": "MacroF1",
+  "secondary_metrics": [
+    "MacroAUPRC",
+    "per_class_recall"
+  ],
+  "contexts": [
+    4,
+    8,
+    16,
+    32
+  ],
+  "feature_modes": [
+    "waveform",
+    "rr",
+    "rr_morphology"
+  ],
+  "loss_modes": [
+    "none",
+    "class_weight",
+    "focal"
+  ],
+  "sampler": [
+    "none",
+    "WeightedRandomSampler"
+  ],
+  "augmentation_train_only": [
+    "gaussian_noise",
+    "baseline_wander",
+    "amplitude_scaling",
+    "small_temporal_perturbation"
+  ],
+  "architectures": [
+    "RNN",
+    "LSTM",
+    "GRU",
+    "BiLSTM",
+    "BiLSTM_Attention",
+    "CNN_BiLSTM_Attention"
+  ],
+  "hierarchical": "N_vs_nonN_then_SV FQ",
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "bootstrap_samples": 500,
+  "robustness": [
+    "clean",
+    "gaussian_noise",
+    "baseline_wander",
+    "amplitude_scaling",
+    "missing_samples"
+  ],
+  "test_hash": "6866fbcc631936f84892df70dee14f2193ebb731a9ea30d48eaa7268ef282be8",
+  "test_examples": 4154
+}

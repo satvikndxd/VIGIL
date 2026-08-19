@@ -152,6 +152,14 @@ Run `python scripts/smoke_test.py` after starting the API. It checks all five te
 
 The committed experiment notebook is `notebooks/mitbih_arrhythmia_research.ipynb`. To retrain, mount the KaggleHub MIT-BIH dataset and rerun it in `DEBUG` or `FINAL` mode. New claims should only be added to this README after the corresponding experiment is executed and its artifacts are saved.
 
+## Minority-class and generalization study
+
+The repository now includes a diagnosis-first experimental study under [`research_results/final_report.md`](research_results/final_report.md). It fixes the grouped 31/7/10 record split and the 4,154-sequence held-out test set, verifies exact five-class mapping and zero record/subject leakage, and evaluates weighting, sampling, focal loss, train-only ECG augmentation, 4/8/16/32-beat context, waveform/RR/morphology features, six temporal architectures, a hierarchical classifier, five-seed stability, bootstrap confidence intervals, and robustness perturbations.
+
+The strongest measured overall candidate in this study was **RNN + RR interval + morphology features**, with Macro-F1 `0.401` versus `0.266` for the matched waveform-only RNN. The hierarchical classifier reached Macro-F1 `0.396` and improved F recall to `0.250`, but N recall remained `0.000`. The report explains the measured error concentration by original annotation symbol, the support and split-composition limitations, and the performance trade-offs. These are research findings on one fixed held-out split, not clinical claims.
+
+The requested artifacts are exported as `research_results/class_counts.csv`, `per_class_metrics.csv`, `confusion_matrix.png`, `ablation_results.csv`, `context_results.csv`, `augmentation_results.csv`, `architecture_results.csv`, `robustness_results.csv`, `seed_results.csv`, and `bootstrap_confidence_intervals.csv`. Run `python research/validate_results.py` to verify the artifact contract, mapping, leakage audit, bootstrap intervals, and five-seed families.
+
 ## Limitations
 
 The five-class grouping is a research mapping, not a clinical label system. The current run has substantial minority-class limitations, especially for F and N. Attention is descriptive rather than causal, and Integrated Gradients is an attribution diagnostic rather than a clinical explanation. The results are not external validation and should not be presented as clinical performance.

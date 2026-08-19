@@ -1,0 +1,2 @@
+MacroF1,MacroAUPRC,MacroAUROC,BalancedAccuracy,MinRecall,Accuracy,experiment,architecture,loss,sampler,augmentation,seed,context,feature_mode,Params
+0.39630787898427716,0.5356786078394032,0.7745339743640163,0.4855141451414514,0.0,0.4862782859894078,hierarchical_N_vs_nonN,hierarchical_RNN,class_weight,False,False,42,8,waveform,16134
